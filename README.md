@@ -15,7 +15,7 @@ OAuth2で認証後、Google APIを利用するサンプルです。
 アクセス権限に「リンクを知っている全員に変更」を与えられないような場合に、アプリが「許可されている本人」になり替わってスプレッドシートへ書き込みを行うことができます。
 
   * 最初にGoogleへログインを行います
-    * [Passport](https://www.passportjs.org/)と、ミドルウェア[assport-google-oauth2](https://www.passportjs.org/packages/passport-google-oauth2/)を利用
+    * [Passport](https://www.passportjs.org/)と、ミドルウェア[Passport-google-oauth2](https://www.passportjs.org/packages/passport-google-oauth2/)を利用
   * 画面で指定したスプレッドシートへデータを書き込みます
 
 ## 2:Google APIを使用するための事前設定 <a id="anchor2"></a>
