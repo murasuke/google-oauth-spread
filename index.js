@@ -62,6 +62,7 @@ passport.deserializeUser((obj, done) => {
  * ・作成した認証情報のclientIdと、clientSecretを環境変数にセットしておくこと
  * ******************************************************************/
 const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
+const fs = require('fs');
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
 passport.use(
   new GoogleStrategy(
@@ -73,7 +74,10 @@ passport.use(
     (accessToken, refreshToken, profile, done) => {
       // Verify Function (ユーザー存在チェック等を行う)
       //  問題がなければユーザー情報callbackに渡すことでreq.userに格納される
-      return done(null, { ...profile, accessToken, refreshToken });
+      // ユーザー情報とtokenをファイルに保存
+      let data = { ...profile, accessToken, refreshToken };
+      fs.writeFileSync('token.txt', JSON.stringify(data));
+      return done(null, data);
     }
   )
 );
@@ -105,14 +109,17 @@ app.get(
  * ・OAuth2認証で取得したaccessToken, refreshTokenを使いSheetに書き込みを行う
  * ******************************************************************/
 // メインページ(スプレッドシートURL、書き込みデータ入力画面)を表示(GET)
-app.get('/', (req, res) =>
+app.get('/', (req, res) => {
+  const token = fs.existsSync('token.txt')
+    ? JSON.parse(fs.readFileSync('token.txt'))
+    : null;
   res.render('pages/sheet', {
     error_message: '',
     sheetURL: '',
     insertValue: '',
-    user: req.user,
-  })
-);
+    user: token,
+  });
+});
 
 const { google } = require('googleapis');
 
@@ -125,7 +132,13 @@ const oAuth2Client = new google.auth.OAuth2({
 // 指定されたスプレッドシートにデータを追記する(POST)
 app.post('/', async (req, res) => {
   // フォーム入力値
-  const { sheetURL, insertValue, redirectToSheet } = req.body;
+  const { sheetURL, insertValue, redirectToSheet, deleteToken } = req.body;
+  // token削除ボタン押下時、ファイルを削除
+  if (deleteToken) {
+    fs.unlinkSync('token.txt');
+    res.redirect('/');
+    return;
+  }
 
   // スプレッドシートIDを抜き出す
   const match = sheetURL.match(/spreadsheets\/d\/([0-9a-zA-Z\-_]+)/);
@@ -140,9 +153,10 @@ app.post('/', async (req, res) => {
   const spreadsheetId = match[1];
 
   // ログイン時に取得したトークンをセット
+  const token = JSON.parse(fs.readFileSync('token.txt'));
   oAuth2Client.setCredentials({
-    refresh_token: req.user.refreshToken,
-    access_token: req.user.accessToken,
+    refresh_token: token.refreshToken,
+    access_token: token.accessToken,
   });
 
   // API経由でスプレッドシートへ書き込み
